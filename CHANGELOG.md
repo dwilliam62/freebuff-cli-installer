@@ -8,6 +8,27 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.6] — 2026-11-01
+
+### Added
+- 📥 **Self-install on a normal run** — `maybe_install_self` copies the script to
+  `$INSTALL_PATH` (default `/usr/local/bin/freebuff-cli.sh`) as part of a plain run, so one
+  invocation now leaves a copy on `PATH` instead of only doing so with `--install`.
+  It is best-effort and never fatal: it is skipped when the running file *is* the installed
+  copy or when `$0` is not a real file (`sh freebuff-cli.sh`, `curl … | bash`), and when the
+  copy fails (no sudo, missing/unwritable target) it prints
+  `Not installed to … — run '… --install'` and launches anyway.
+
+### Changed
+- 🧹 The distro gate calls `os_family strict >/dev/null` instead of capturing an unused
+  `SUPPORTED_PM`, clearing shellcheck `SC2034`.
+
+### Fixed
+- 💬 Running the installer twice could leave nothing in `/usr/local/bin`: a plain run never
+  copied the script. It now does, and says so when it cannot.
+
+---
+
 ## [v0.5] — 2026-11-01
 
 ### Added
@@ -102,6 +123,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ---
 
 [Unreleased]: https://github.com/dwilliam62/FreeBuff-cli-installer
+[v0.6]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.5]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.4]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.3]: https://github.com/dwilliam62/FreeBuff-cli-installer

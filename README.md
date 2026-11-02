@@ -5,7 +5,7 @@
 **One command to get [Freebuff](https://freebuff.com) — the AI coding agent — running on your Linux box.**
 
 <p>
-  <img alt="script version" src="https://img.shields.io/badge/script-v0.5-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
+  <img alt="script version" src="https://img.shields.io/badge/script-v0.6-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora%20%7C%20Gentoo-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
   <img alt="shell" src="https://img.shields.io/badge/shell-bash-4eaa25?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="license" src="https://img.shields.io/badge/license-GPL--3.0-blueviolet?style=for-the-badge&logo=opensourceinitiative&logoColor=white">
@@ -114,8 +114,15 @@ Preview first if you prefer:
 freebuff-cli.sh                      # now available as a command
 ```
 
+A plain `./freebuff-cli.sh` also copies itself to `$INSTALL_PATH` on a best-effort basis, so
+you do not strictly need `--install`; it never fails the launch, and says
+`Not installed to … — run '… --install'` when the copy is not possible (no sudo, missing or
+unwritable target). A piped `curl … | bash` run is skipped silently, because `$0` is not the
+script file to copy.
+
 | Behaviour | Detail |
 |:--|:--|
+| 🔁 Self-install | a normal run copies the script to `$INSTALL_PATH` when it can; `--install` is the explicit, checked form |
 | 🔐 Elevation | uses `sudo` only when the target directory is not writable |
 | 🚫 No surprises | **refuses to create a missing directory** — it never fabricates `/usr/local/bin` |
 | 🎯 Custom target | `FREEBUFF_INSTALL_PATH=$HOME/.local/bin/freebuff-cli.sh ./freebuff-cli.sh --install` |
@@ -138,7 +145,7 @@ The script is a convenience wrapper around this; if Node.js is already current, 
 ## 🎛️ Usage
 
 ```console
-Usage: freebuff-cli.sh v0.5 [OPTIONS] [--] [ARGS...]
+Usage: freebuff-cli.sh v0.6 [OPTIONS] [--] [ARGS...]
 ```
 
 <div align="left">

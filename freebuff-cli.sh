@@ -10,7 +10,7 @@ set -euo pipefail
 
 PACKAGE="freebuff"
 # Version of this script. Bump it on every change (v0.1 was the first).
-SCRIPT_VERSION="v0.5"
+SCRIPT_VERSION="v0.6"
 # Minimum Node.js major version this script will accept.
 MIN_NODE_MAJOR="${FREEBUFF_MIN_NODE_MAJOR:-18}"
 # Node.js major version installed by the NodeSource fallback.
@@ -452,6 +452,9 @@ Flags:
   -h, --help      usage
 
 Change history (newest first):
+  * v0.6 — a plain run now copies the script to the install path when that is
+    possible, and says how to do it when it is not; removed an unused variable
+    reported by shellcheck
   * v0.5 — Gentoo support (emerge); NodeSource is skipped there, nvm is the
     fallback for an outdated dev-lang/nodejs
   * v0.4 — uninstall moved to -r/--remove; -u is short for --upgrade again
@@ -479,11 +482,10 @@ fi
 
 # ------------------------------------------------------------------ distro ---
 # Refuse to run anywhere this script cannot install Node.js reliably.
-if ! SUPPORTED_PM="$(os_family strict)"; then
+if ! os_family strict >/dev/null; then
   if [ "$FORCE" -eq 1 ]; then
     log "Warning: unsupported distro ($(distro_label)) — continuing because of --force."
     log "Installs may fail here; --force is meant for testing, not daily use."
-    SUPPORTED_PM=""
   else
     err "Unsupported distro: $(distro_label)"
     err "This script supports Debian/Ubuntu (apt), Arch (pacman), Fedora/RHEL (dnf)"
@@ -673,6 +675,29 @@ uninstall_self() {
   return 0
 }
 
+# Best-effort install on a normal run: put this script where --install would,
+# so a single plain run leaves a copy on PATH. Never fatal and never noisy — the
+# launch still happens when the copy is not possible (no sudo, piped via curl,
+# or INSTALL_DIR not writable).
+maybe_install_self() {
+  local src
+  src="$(cd "$(dirname "$0")" && pwd)/$(basename "$0")"
+
+  # Nothing to install when we are already the installed copy, or when $0 is
+  # not a real file (sh freebuff-cli.sh / curl ... | bash).
+  if [ "$src" = "$INSTALL_PATH" ] || [ ! -f "$src" ]; then
+    return 0
+  fi
+
+  if install_self >/dev/null 2>&1; then
+    log "Installed this script to $INSTALL_PATH."
+    return 0
+  fi
+
+  log "Not installed to $INSTALL_PATH — run '$(basename "$0") --install' to put it on your PATH."
+  return 0
+}
+
 if [ "$INSTALL" -eq 1 ]; then
   if install_self; then
     exit 0
@@ -730,6 +755,9 @@ elif [ "$CURRENT" = "$LATEST" ]; then
 else
   log "Latest published $PACKAGE: v$LATEST (outdated — re-run with --upgrade to update)"
 fi
+
+# --------------------------------------------------------------- self-install ---
+maybe_install_self
 
 # ------------------------------------------------------------------- launch ---
 log "Starting $PACKAGE..."
