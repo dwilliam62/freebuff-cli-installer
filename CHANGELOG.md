@@ -8,6 +8,26 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v0.5] — 2026-11-01
+
+### Added
+- 🧩 **Gentoo support** — `emerge` is now a fourth supported package manager:
+  `os_family` maps `ID=gentoo` to `emerge` (and probes for the `emerge` command as a
+  fallback), and `install_node_distro` runs
+  `emerge --ask=n --noreplace dev-lang/nodejs`, which brings npm and npx with it via the
+  default `npm` USE flag and leaves the world file untouched.
+- 📖 README gained a Gentoo row in the supported-systems table, an inline explanation of the
+  emerge route (no NodeSource repo, root-owned npm prefix) and two Gentoo troubleshooting rows.
+
+### Changed
+- 🚫 `install_node_nodesource` short-circuits on `emerge` with
+  "NodeSource does not publish packages for Gentoo", so an outdated `dev-lang/nodejs` falls
+  through to the nvm route instead of failing.
+- 💬 Distro-gate error, `--help` and `--check` messages now list `emerge` alongside
+  apt/pacman/dnf.
+
+---
+
 ## [v0.4] — 2026-11-01
 
 ### Changed
@@ -82,6 +102,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ---
 
 [Unreleased]: https://github.com/dwilliam62/FreeBuff-cli-installer
+[v0.5]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.4]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.3]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.2]: https://github.com/dwilliam62/FreeBuff-cli-installer

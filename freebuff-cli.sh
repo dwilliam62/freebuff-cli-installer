@@ -3,14 +3,14 @@
 # freebuff-cli.sh — ensure Node.js/npm and the Freebuff CLI are installed,
 # report versions, then launch the CLI.
 #
-# Supported systems: Debian/Ubuntu, Arch and Fedora based distributions only.
+# Supported systems: Debian/Ubuntu, Arch, Fedora and Gentoo based distributions only.
 # Anything else (including NixOS) exits with "Unsupported distro" unless --force.
 #
 set -euo pipefail
 
 PACKAGE="freebuff"
 # Version of this script. Bump it on every change (v0.1 was the first).
-SCRIPT_VERSION="v0.4"
+SCRIPT_VERSION="v0.5"
 # Minimum Node.js major version this script will accept.
 MIN_NODE_MAJOR="${FREEBUFF_MIN_NODE_MAJOR:-18}"
 # Node.js major version installed by the NodeSource fallback.
@@ -45,7 +45,8 @@ Usage: $(basename "$0") $SCRIPT_VERSION [OPTIONS] [--] [ARGS...]
   -v, --version   Print this script's version and exit
   -h, --help      Show this help and exit
 
-Supported systems: Debian/Ubuntu (apt), Arch (pacman), Fedora/RHEL (dnf).
+Supported systems: Debian/Ubuntu (apt), Arch (pacman), Fedora/RHEL (dnf),
+                   Gentoo (emerge).
 Any other arguments are passed through to freebuff.
 
 Env overrides:
@@ -126,7 +127,7 @@ download() {
   return 1
 }
 
-# Echo the distro package manager: apt | pacman | dnf.
+# Echo the distro package manager: apt | pacman | dnf | emerge.
 # With "strict", only /etc/os-release is trusted (no command probing).
 os_family() {
   local strict="${1:-}" id="" like="" keys
@@ -141,6 +142,7 @@ os_family() {
       *debian*|*ubuntu*|*mint*|*pop*)  echo apt;    return 0 ;;
       *arch*|*manjaro*|*endeavouros*)  echo pacman; return 0 ;;
       *fedora*|*rhel*|*centos*)        echo dnf;    return 0 ;;
+      *gentoo*)                        echo emerge; return 0 ;;
     esac
   fi
 
@@ -151,6 +153,7 @@ os_family() {
   if have apt-get; then echo apt;    return 0; fi
   if have pacman;  then echo pacman; return 0; fi
   if have dnf;     then echo dnf;    return 0; fi
+  if have emerge;  then echo emerge; return 0; fi
   return 1
 }
 
@@ -189,7 +192,7 @@ npm_install_global() {
 install_node_distro() {
   local pm
   if ! pm="$(os_family)"; then
-    log "Could not map this system to apt, pacman or dnf."
+    log "Could not map this system to apt, pacman, dnf or emerge."
     return 1
   fi
   if ! can_elevate; then
@@ -211,6 +214,14 @@ install_node_distro() {
       log "Detected a Fedora-based system — installing Node.js with dnf..."
       pkg_run dnf install -y nodejs npm
       ;;
+    emerge)
+      # Gentoo bundles npm/npx with dev-lang/nodejs (the `npm` USE flag, on by
+      # default). --noreplace keeps the world file untouched; --ask=n keeps
+      # emerge from prompting. A masked or keyword-gated package makes emerge
+      # fail, and ensure_node then falls back to nvm.
+      log "Detected a Gentoo-based system — installing Node.js with emerge..."
+      pkg_run emerge --ask=n --noreplace dev-lang/nodejs
+      ;;
   esac
 
   if [ "$DRY_RUN" -eq 0 ]; then
@@ -230,6 +241,10 @@ install_node_nodesource() {
     dnf) url="https://rpm.nodesource.com/setup_${NODESOURCE_MAJOR}.x" ;;
     pacman)
       log "NodeSource does not publish packages for Arch-based systems."
+      return 1
+      ;;
+    emerge)
+      log "NodeSource does not publish packages for Gentoo."
       return 1
       ;;
   esac
@@ -437,18 +452,20 @@ Flags:
   -h, --help      usage
 
 Change history (newest first):
+  * v0.5 — Gentoo support (emerge); NodeSource is skipped there, nvm is the
+    fallback for an outdated dev-lang/nodejs
   * v0.4 — uninstall moved to -r/--remove; -u is short for --upgrade again
   * v0.3 — -u/--uninstall; internal refactor: one distro-family helper, one
     download helper, one sudo wrapper, one copy helper
   * v0.2 — accept lowercase -v as an alias for --version
   * v0.1 — first numbered version, adding the --version flag; everything below
   * --force and --changes, plus the distro gate that refuses systems that are
-    not Debian/Ubuntu, Arch or Fedora based
+    not Debian/Ubuntu, Arch, Fedora or Gentoo based
   * --install, which refuses to create a missing target directory
   * --check, a read-only status report that exits 1 when something is missing
   * --nvm fallback for machines without root or with an outdated distro Node
   * NodeSource fallback when apt/dnf ship a Node older than the minimum
-  * distro installs for apt, pacman and dnf
+  * distro installs for apt, pacman, dnf and emerge
   * freebuff version reporting and the --upgrade self-update
   * --dry-run, so every action can be previewed first
   * first version: install freebuff globally if missing, then launch it via npx
@@ -469,7 +486,8 @@ if ! SUPPORTED_PM="$(os_family strict)"; then
     SUPPORTED_PM=""
   else
     err "Unsupported distro: $(distro_label)"
-    err "This script supports Debian/Ubuntu (apt), Arch (pacman) and Fedora/RHEL (dnf) based systems only."
+    err "This script supports Debian/Ubuntu (apt), Arch (pacman), Fedora/RHEL (dnf)"
+    err "and Gentoo (emerge) based systems only."
     err "Use --force to attempt it anyway (not recommended)."
     exit 1
   fi
@@ -484,7 +502,7 @@ check_status() {
   if pm="$(os_family)"; then
     log "Package manager: $pm"
   else
-    log "Package manager: none of apt/pacman/dnf detected (nvm route only)"
+    log "Package manager: none of apt/pacman/dnf/emerge detected (nvm route only)"
   fi
 
   if have node; then

@@ -5,8 +5,8 @@
 **One command to get [Freebuff](https://freebuff.com) — the AI coding agent — running on your Linux box.**
 
 <p>
-  <img alt="script version" src="https://img.shields.io/badge/script-v0.4-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
-  <img alt="platforms" src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
+  <img alt="script version" src="https://img.shields.io/badge/script-v0.5-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
+  <img alt="platforms" src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora%20%7C%20Gentoo-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
   <img alt="shell" src="https://img.shields.io/badge/shell-bash-4eaa25?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="license" src="https://img.shields.io/badge/license-GPL--3.0-blueviolet?style=for-the-badge&logo=opensourceinitiative&logoColor=white">
 </p>
@@ -31,7 +31,7 @@
 | 1️⃣ | Checks that Node.js and npm exist and are new enough (default **≥ v18**) |
 | 2️⃣ | Installs Node.js with your distro's package manager if it is missing or too old |
 | 3️⃣ | Falls back to **NodeSource** (Debian/Ubuntu, Fedora/RHEL) when the distro build is stale |
-| 4️⃣ | Falls back to **nvm** (no root needed) when neither of the above is possible |
+| 4️⃣ | Falls back to **nvm** (no root needed) when neither of the above is possible — also the route taken on Gentoo, which has no NodeSource repo |
 | 5️⃣ | Installs `freebuff` globally, or runs it on demand via `npx` if npm's prefix is read-only |
 | 6️⃣ | Reports installed vs. latest freebuff version, then launches `npx --yes freebuff` |
 
@@ -53,6 +53,7 @@ toolchain can be inspected without installing anything with `--check`.
 | 🟠 Debian family | Debian, Ubuntu, Mint, Pop!_OS | `apt-get` → NodeSource `deb` |
 | 🔵 Arch family | Arch, Manjaro, EndeavourOS | `pacman` |
 | 🎩 Fedora family | Fedora, RHEL, CentOS | `dnf` → NodeSource `rpm` |
+| 🧩 Gentoo family | Gentoo | `emerge` (`dev-lang/nodejs`, npm bundled) |
 | 🟣 **NixOS** | NixOS | ❌ refused by the script — use [`nixos/`](#-nixos-integration) |
 | ⚪ Anything else | Alpine, openSUSE, … | ❌ refused — `Unsupported distro` |
 
@@ -63,9 +64,18 @@ On an unsupported system the script exits **before touching anything**:
 ```console
 $ ./freebuff-cli.sh
 Error: Unsupported distro: NixOS 26.11 (Zokor)
-Error: This script supports Debian/Ubuntu (apt), Arch (pacman) and Fedora/RHEL (dnf) based systems only.
+Error: This script supports Debian/Ubuntu (apt), Arch (pacman), Fedora/RHEL (dnf)
+Error: and Gentoo (emerge) based systems only.
 Error: Use --force to attempt it anyway (not recommended).
 ```
+
+**Gentoo notes** 🧩 — the script runs `emerge --ask=n --noreplace dev-lang/nodejs`, which
+pulls npm and npx in as part of the package (the default `npm` USE flag). It never edits your
+world file. Gentoo is a source-based, rolling distribution with no **NodeSource** repository,
+so if `::gentoo` carries a `dev-lang/nodejs` older than the minimum — or the package is masked
+or keyword-gated — the script goes straight to the **nvm** fallback (`~/.nvm`, no root) rather
+than failing. npm's global prefix (`/usr/lib/node_modules`) is root-owned, so expect the
+global install to warn and the launch to continue through `npx --yes`; that is normal on Gentoo.
 
 `--force` overrides the check for testing, with a warning. It is not meant for daily use.
 
@@ -128,7 +138,7 @@ The script is a convenience wrapper around this; if Node.js is already current, 
 ## 🎛️ Usage
 
 ```console
-Usage: freebuff-cli.sh v0.4 [OPTIONS] [--] [ARGS...]
+Usage: freebuff-cli.sh v0.5 [OPTIONS] [--] [ARGS...]
 ```
 
 <div align="left">
@@ -268,6 +278,8 @@ freebuff-cli
 | `… is not in your PATH` | Add the directory to `PATH` (e.g. `~/.local/bin`) |
 | `npm install -g` warns and falls back to npx | Expected on read-only npm prefixes; the launch still works |
 | `Node.js vX is older than the required v18` | The script tries NodeSource, then nvm; or force it with `--nvm` |
+| `emerge` is blocked by a mask / keyword / USE change (Gentoo) | Unmask it, or skip emerge entirely with `./freebuff-cli.sh --nvm` |
+| `emerge: command not found` | You are not on Gentoo, or `sys-apps/portage` is not in `PATH` |
 | `Could not start dynamically linked executable` (NixOS) | `programs.nix-ld.enable = true;` and rebuild |
 | `Failed to download …` | Ensure `curl` or `wget` is installed |
 | freebuff launches a different build than expected | Use the `freebuff-cli` wrapper (see NixOS section) |
