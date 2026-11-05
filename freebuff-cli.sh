@@ -10,7 +10,7 @@ set -euo pipefail
 
 PACKAGE="freebuff"
 # Version of this script. Bump it on every change (v0.1 was the first).
-SCRIPT_VERSION="v0.6"
+SCRIPT_VERSION="v0.7"
 # Minimum Node.js major version this script will accept.
 MIN_NODE_MAJOR="${FREEBUFF_MIN_NODE_MAJOR:-18}"
 # Node.js major version installed by the NodeSource fallback.
@@ -24,6 +24,7 @@ UPGRADE=0
 DRY_RUN=0
 USE_NVM=0
 CHECK=0
+DOCTOR=0
 INSTALL=0
 UNINSTALL=0
 FORCE=0
@@ -39,6 +40,7 @@ Usage: $(basename "$0") $SCRIPT_VERSION [OPTIONS] [--] [ARGS...]
   -n, --dry-run   Show the commands that would run, change nothing
       --nvm       Install Node.js with nvm (no root needed) instead of system packages
   -c, --check     Report the current status and exit; installs and launches nothing
+  -d, --doctor    Diagnose the whole toolchain, printing a fix for each problem; exits 1 on a failure
       --install   Copy this script to $INSTALL_PATH and exit
       --force     Run even on an unsupported distro (testing escape hatch)
       --changes   Print what this script does and its change history, then exit
@@ -63,6 +65,7 @@ while [ "$#" -gt 0 ]; do
     -n|--dry-run)  DRY_RUN=1; shift ;;
     --nvm)         USE_NVM=1; shift ;;
     -c|--check)    CHECK=1; shift ;;
+    -d|--doctor|doctor) DOCTOR=1; shift ;;
     --install)     INSTALL=1; shift ;;
     -r|--remove|--uninstall) UNINSTALL=1; shift ;;
     --force)       FORCE=1; shift ;;
@@ -445,6 +448,7 @@ Flags:
   -n, --dry-run   print every install and launch command without running it
       --nvm       install Node.js under \$HOME/.nvm with no root
   -c, --check     read-only report: distro, Node, npm, npx, freebuff versions
+  -d, --doctor    full diagnosis: every prerequisite, with a fix beside each problem
       --install   copy this script to $INSTALL_PATH (never creates the directory)
       --force     run on distros this script was not written for
       --changes   print this list
@@ -452,6 +456,9 @@ Flags:
   -h, --help      usage
 
 Change history (newest first):
+  * v0.7 — --doctor: a deeper read-only diagnosis than --check, with the fix
+    printed beside each problem (distro, downloader, Node, npm, npx, TTY,
+    install path, registry, binary cache)
   * v0.6 — a plain run now copies the script to the install path when that is
     possible, and says how to do it when it is not; removed an unused variable
     reported by shellcheck
@@ -478,6 +485,161 @@ EOF
 if [ "$CHANGES" -eq 1 ]; then
   show_changes
   exit 0
+fi
+
+# ------------------------------------------------------------------ doctor ---
+# Read-only diagnosis, one step deeper than --check: every prerequisite the
+# launch depends on, with the fix printed next to the problem. Runs before the
+# distro gate, because an unsupported distro is exactly what doctor should
+# report rather than refuse.
+DOC_FAIL=0
+DOC_WARN=0
+
+doc_ok()   { log "  [ok]   $*"; }
+doc_warn() { log "  [warn] $*"; DOC_WARN=$((DOC_WARN + 1)); }
+doc_fail() { log "  [FAIL] $*"; DOC_FAIL=$((DOC_FAIL + 1)); }
+doc_fix()  { log "         fix: $*"; }
+
+doctor() {
+  local pm="" major="" current="" latest="" dir="" cache=""
+
+  log "$(basename "$0") $SCRIPT_VERSION — doctor"
+  log ""
+
+  log "System"
+  log "  $(distro_label)"
+  if pm="$(os_family strict)"; then
+    doc_ok "supported distro — package manager: $pm"
+  elif pm="$(os_family || true)" && [ -n "$pm" ]; then
+    doc_warn "unsupported distro — $pm is installed, but only Debian/Ubuntu, Arch, Fedora and Gentoo are supported"
+    doc_fix "use --force to try anyway, or --nvm to skip system packages"
+  else
+    doc_warn "unsupported distro — none of apt, pacman, dnf or emerge found"
+    doc_fix "install Node.js manually, or re-run with --nvm (needs curl or wget)"
+  fi
+
+  log "Downloader"
+  if have curl; then
+    doc_ok "curl present (used by the NodeSource and nvm fallbacks)"
+  elif have wget; then
+    doc_ok "wget present (used by the NodeSource and nvm fallbacks)"
+  else
+    doc_warn "neither curl nor wget is installed"
+    doc_fix "install one of them, or the fallbacks cannot download anything"
+  fi
+
+  log "Node.js"
+  if have node; then
+    major="$(node_major)"
+    if [ -n "$major" ] && [ "$major" -ge "$MIN_NODE_MAJOR" ]; then
+      doc_ok "$(node --version) at $(command -v node) — meets the v$MIN_NODE_MAJOR minimum"
+    else
+      doc_fail "$(node --version 2>/dev/null || echo node) is older than the required v$MIN_NODE_MAJOR"
+      doc_fix "run without --doctor and let NodeSource/nvm upgrade it, or use --nvm"
+    fi
+  else
+    doc_fail "node not found"
+    doc_fix "run without --doctor to install it, or install Node.js v$MIN_NODE_MAJOR+ yourself"
+  fi
+
+  if have npm; then
+    doc_ok "npm $(npm --version 2>/dev/null)"
+  else
+    doc_fail "npm not found"
+    doc_fix "it ships with Node.js — reinstall Node.js v$MIN_NODE_MAJOR+"
+  fi
+
+  if have npx; then
+    doc_ok "npx present"
+  else
+    doc_fail "npx not found — $PACKAGE is launched through npx"
+    doc_fix "it ships with npm — reinstall Node.js v$MIN_NODE_MAJOR+"
+  fi
+
+  log "Terminal"
+  if [ -t 0 ] && [ -t 1 ]; then
+    doc_ok "attached to a terminal"
+  else
+    doc_warn "stdin or stdout is not a terminal"
+    doc_fix "freebuff is an interactive agent — run it from a normal shell, not from a pipe"
+  fi
+  if have stty; then
+    doc_ok "stty present"
+  else
+    doc_warn "stty not found"
+    doc_fix "install util-linux/coreutils; some terminals need it for sane line handling"
+  fi
+  if [ -n "${TERM:-}" ] && [ "${TERM:-dumb}" != "dumb" ]; then
+    doc_ok "TERM=$TERM"
+  else
+    doc_warn "TERM is unset or 'dumb'"
+    doc_fix "export TERM=xterm-256color"
+  fi
+
+  log "Self-install"
+  dir="$(dirname "$INSTALL_PATH")"
+  if [ ! -d "$dir" ]; then
+    doc_warn "$dir does not exist — --install refuses to create it"
+    doc_fix "create it, or point FREEBUFF_INSTALL_PATH at an existing directory"
+  elif [ -w "$dir" ] || is_root || can_elevate; then
+    doc_ok "$dir is writable (directly or through sudo)"
+  else
+    doc_warn "cannot write $dir and sudo is not available"
+    doc_fix "set FREEBUFF_INSTALL_PATH=\$HOME/.local/bin/freebuff-cli.sh"
+  fi
+  case ":${PATH}:" in
+    *":${dir}:"*) doc_ok "$dir is on PATH" ;;
+    *) doc_warn "$dir is not on PATH"
+       doc_fix "add it to PATH, or call the script by its full path" ;;
+  esac
+
+  log "freebuff"
+  if have npm; then
+    current="$(installed_version || true)"
+    if [ -n "$current" ]; then
+      doc_ok "installed globally: v$current"
+    else
+      doc_ok "no global install — npx fetches it into the npm cache on launch"
+    fi
+
+    latest="$(latest_version)"
+    if [ -z "$latest" ]; then
+      doc_warn "the npm registry could not be reached (offline or blocked)"
+      doc_fix "launches still work from the npx cache; check network or proxy settings"
+    elif [ -n "$current" ] && [ "$current" != "$latest" ]; then
+      doc_warn "v$current is outdated — latest is v$latest"
+      doc_fix "re-run with --upgrade"
+    else
+      doc_ok "npm registry reachable — latest is v$latest"
+    fi
+  fi
+
+  cache="${XDG_CONFIG_HOME:-$HOME/.config}/manicode"
+  if [ -d "$cache" ]; then
+    doc_ok "native binary cache: $cache"
+  else
+    doc_ok "native binary cache not created yet — the first launch downloads it"
+  fi
+
+  log ""
+  if [ "$DOC_FAIL" -eq 0 ] && [ "$DOC_WARN" -eq 0 ]; then
+    log "All checks passed — freebuff should launch."
+    return 0
+  fi
+  log "$DOC_FAIL failure(s), $DOC_WARN warning(s)."
+  if [ "$DOC_FAIL" -gt 0 ]; then
+    log "Not ready — run without --doctor to install what is missing."
+    return 1
+  fi
+  log "Nothing blocking — freebuff should launch."
+  return 0
+}
+
+if [ "$DOCTOR" -eq 1 ]; then
+  if doctor; then
+    exit 0
+  fi
+  exit 1
 fi
 
 # ------------------------------------------------------------------ distro ---

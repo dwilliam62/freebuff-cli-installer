@@ -5,7 +5,7 @@
 **One command to get [Freebuff](https://freebuff.com) — the AI coding agent — running on your Linux box.**
 
 <p>
-  <img alt="script version" src="https://img.shields.io/badge/script-v0.6-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
+  <img alt="script version" src="https://img.shields.io/badge/script-v0.7-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="platforms" src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora%20%7C%20Gentoo-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
   <img alt="shell" src="https://img.shields.io/badge/shell-bash-4eaa25?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="license" src="https://img.shields.io/badge/license-GPL--3.0-blueviolet?style=for-the-badge&logo=opensourceinitiative&logoColor=white">
@@ -94,6 +94,7 @@ Preview first if you prefer:
 
 ```bash
 ./freebuff-cli.sh --check     # what is installed, what is missing (changes nothing)
+./freebuff-cli.sh --doctor    # every prerequisite, with the fix beside each problem
 ./freebuff-cli.sh --dry-run   # the exact commands a real run would execute
 ```
 
@@ -145,7 +146,7 @@ The script is a convenience wrapper around this; if Node.js is already current, 
 ## 🎛️ Usage
 
 ```console
-Usage: freebuff-cli.sh v0.6 [OPTIONS] [--] [ARGS...]
+Usage: freebuff-cli.sh v0.7 [OPTIONS] [--] [ARGS...]
 ```
 
 <div align="left">
@@ -156,6 +157,7 @@ Usage: freebuff-cli.sh v0.6 [OPTIONS] [--] [ARGS...]
 | `-n`, `--dry-run` | Print every install/launch command, change nothing |
 | `--nvm` | Install Node.js with nvm (no root) instead of system packages |
 | `-c`, `--check` | Read-only report: distro, Node, npm, npx, freebuff versions (exit `1` if not ready) |
+| `-d`, `--doctor` | Deeper read-only diagnosis of the whole toolchain, printing the fix for each problem (exit `1` on a failure) |
 | `--install` | Copy the script to `$INSTALL_PATH` and exit |
 | `-r`, `--remove` | Remove the installed copy and exit |
 | `--force` | Run on an unsupported distro (testing escape hatch) |
@@ -172,6 +174,12 @@ Any argument the script does not recognise is forwarded to `freebuff`, and `--` 
 ./freebuff-cli.sh --upgrade -- --flag
 ```
 
+`--check` and `--doctor` both change nothing. `--check` is the short answer (versions and a
+ready/not-ready verdict); `--doctor` walks every prerequisite — distro, downloader, Node, npm,
+npx, terminal, install path, registry, binary cache — and prints a `fix:` line under anything
+that is wrong. `doctor` on its own works as an alias, and needs no supported distro to run,
+so it is the command to reach for when the script refuses to start.
+
 ### Environment variables
 
 | Variable | Default | Purpose |
@@ -186,6 +194,7 @@ Any argument the script does not recognise is forwarded to `freebuff`, and `--` 
 ```bash
 ./freebuff-cli.sh                        # ensure everything, then launch freebuff
 ./freebuff-cli.sh --check                # status report, exit code 0 = ready
+./freebuff-cli.sh --doctor               # full diagnosis with fixes for each problem
 ./freebuff-cli.sh --upgrade              # update freebuff, then launch
 ./freebuff-cli.sh --nvm                  # force the nvm route (no root)
 ./freebuff-cli.sh --dry-run --upgrade    # show what an upgrade would do
