@@ -72,8 +72,11 @@ in {
 
       # --version prints and exits before the binary reads the terminal's OSC
       # 11 reply, so it cannot be exec'd if the wrapper is to clean up after it.
+      # -V is listed because the npm CLI accepts it as a --version alias too;
+      # leaving it out would route it through the exec path below and leak the
+      # reply. -h/--help exits the same way, so it needs the same drain.
       case "$1" in
-        -v | --version | -h | --help)
+        -v | -V | --version | -h | --help)
           npx --yes freebuff "$@"
           status=$?
           drain_terminal_reply

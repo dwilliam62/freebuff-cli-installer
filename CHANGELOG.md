@@ -27,12 +27,16 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   with the `--force` / `--nvm` options instead of exiting with `Unsupported distro`.
 - 🔢 `SCRIPT_VERSION` bumped to `v0.7`; `--help`, `--changes` and the built-in history list the
   new flag.
+- 🎨 `nixos/freebuff-cli.nix` is kept clean under `alejandra` 4.1.0, `statix check` and
+  `deadnix`, and the module still evaluates and builds with nix 2.35.4.
 
 ### Fixed
 - 🐧 `nixos/freebuff-cli.nix` — the wrapper now reads and discards freebuff's pending OSC 11
   background-colour reply after `--version`/`--help`, so bytes like `11;rgb:…` no longer leak
-  into the caller's shell. The bash script needs no equivalent: its `--version` prints locally
-  and its launch goes through `exec npx`, which replaces the shell.
+  into the caller's shell. `-V` takes that path too, matching the npm CLI's other `--version`
+  alias; previously it fell through to the `exec` path and could leak the reply. The bash
+  script needs no equivalent: its `--version` prints locally and its launch goes through
+  `exec npx`, which replaces the shell.
 
 ---
 
