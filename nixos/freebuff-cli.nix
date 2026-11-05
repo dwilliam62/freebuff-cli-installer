@@ -6,6 +6,11 @@
 # ==================================================
 #  freebuff-cli -- the freebuff coding agent, always run through npx.
 #
+#  freebuff's native binary asks the terminal for its background colour (OSC
+#  11). A short run can exit before reading the answer, leaving bytes like
+#  "11;rgb:..." for the caller's shell to print, so the --version path below
+#  reads and discards whatever reply is still queued.
+#
 #  freebuff is published to npm as a thin launcher package: index.js and
 #  launcher.js download the platform native binary (sha256-verified against
 #  binaryChecksums in its package.json) into ~/.config/manicode on first run,
@@ -22,6 +27,7 @@
 #  the npm CLI package.
 {pkgs, ...}: let
   binPath = pkgs.lib.makeBinPath [
+    pkgs.coreutils # provides stty/dd for the OSC 11 drain
     pkgs.nodejs # provides npm/npx
   ];
 in {
@@ -52,6 +58,28 @@ in {
 
       # Ensure npm/npx are available regardless of the caller's PATH
       export PATH=${binPath}:$PATH
+
+      # Read and discard the terminal's pending OSC 11 colour reply, then
+      # restore the terminal settings exactly as they were.
+      drain_terminal_reply() {
+        [ -t 0 ] || return 0
+        local saved
+        saved=$(stty -g 2>/dev/null) || return 0
+        stty -icanon min 0 time 2 2>/dev/null || return 0
+        dd bs=256 count=1 of=/dev/null 2>/dev/null || true
+        stty "$saved" 2>/dev/null || true
+      }
+
+      # --version prints and exits before the binary reads the terminal's OSC
+      # 11 reply, so it cannot be exec'd if the wrapper is to clean up after it.
+      case "$1" in
+        -v | --version | -h | --help)
+          npx --yes freebuff "$@"
+          status=$?
+          drain_terminal_reply
+          exit "$status"
+          ;;
+      esac
 
       # `--yes` skips npx's interactive "Ok to proceed?" install prompt so the
       # first run also works from scripts and non-interactive shells.
