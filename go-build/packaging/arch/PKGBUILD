@@ -1,0 +1,24 @@
+# Maintainer: ddubs
+pkgname=freebuff-cli
+pkgver=1.0.0
+pkgrel=1
+pkgdesc="Standalone launcher and updater for the Freebuff AI coding agent (zero Node/npm dependencies)"
+arch=('x86_64' 'aarch64')
+url="https://freebuff.com"
+license=('GPL-3.0-or-later')
+depends=('glibc' 'ca-certificates' 'kitty')
+optdepends=('libnotify: desktop notifications for new upstream releases (--notify)')
+makedepends=('go>=1.22')
+source=()
+sha256sums=()
+
+build() {
+  cd "${startdir}/../.."
+  export CGO_ENABLED=0
+  go build -trimpath -ldflags="-s -w" -o "${srcdir}/freebuff-cli" ./cmd/freebuff-cli
+}
+
+package() {
+  install -Dm755 "${srcdir}/freebuff-cli" "${pkgdir}/usr/bin/freebuff-cli"
+  install -Dm644 "${startdir}/../freebuff-cli.desktop" "${pkgdir}/usr/share/applications/freebuff-cli.desktop"
+}

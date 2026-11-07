@@ -8,6 +8,21 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## [v1.0.0] — 2026-11-07 (`go-build/` Standalone Cross-Distro Edition)
+
+### Added
+- 🚀 **Standalone Go `freebuff-cli` (`go-build/`)** — a zero-dependency (`CGO_ENABLED=0`, Go `>= 1.22` standard library only) native launcher and updater that replaces the Node.js/npm/npx wrapper chain across **NixOS**, **Debian**, **Ubuntu**, **Gentoo**, **Arch Linux**, and **Fedora** while preserving the original `freebuff-cli.sh` and `nixos/freebuff-cli.nix` files intact.
+- 🔒 **Direct NPM Registry & Release Sync** — queries `https://registry.npmjs.org/freebuff/latest` over HTTPS, validates strict semver, verifies SHA-256 digests against the npm `binaryChecksums` map, enforces redirect host allowlisting (`codebuff.com`, `freebuff.com`, `github.com`, `*.githubusercontent.com`), supports HTTP `Range` download resumption, and extracts `freebuff` and `tree-sitter.wasm` into `~/.config/manicode/`.
+- 🧠 **CPU AVX2 Detection & `SIGILL` Fallback** — probes `/proc/cpuinfo` on Linux for `avx2`, manages `~/.config/manicode/cpu-features.json`, and automatically switches to `linux-x64-baseline` if the optimized binary exits with `SIGILL`.
+- 🔄 **Deferred Background Updates & Orphan Adoption** — checks for newer releases 100ms after session startup, stages verified updates under `~/.config/manicode/.freebuff-download-temp-<pid>/staged.json`, installs them on exit, and adopts orphaned staged updates on the next launch if the terminal was closed with `SIGHUP`.
+- 🧹 **Legacy Nix & Bash Wrapper Detection & Cleanup (`--remove-legacy-nix`, `--remove-sh`)** — detects previous `npx`-based Nix `freebuff-cli` wrappers (`/etc/profiles/per-user/$USER/bin/freebuff-cli`, `~/.nix-profile/bin/freebuff-cli`, `freebuff-cli.nix` modules, and `freebuff-cli-check.timer`) as well as installed NPM-based `freebuff-cli.sh` copies (`/usr/local/bin/freebuff-cli.sh`, `~/.local/bin/freebuff-cli.sh`) and global npm / `~/.npm/_npx/*/node_modules/freebuff` caches, prompting to remove them cleanly.
+- 🐱 **Kitty Desktop Entry (`--desktop-entry` / `--install`)** — creates and manages `~/.local/share/applications/freebuff-cli.desktop` (`Exec=kitty --title "Freebuff CLI" --class freebuff-cli -e ...`) to launch Freebuff in a dedicated Kitty terminal window.
+- 🩺 **Prerequisite Checker & Auto-Installer (`--doctor` / `--prereqs` / `--install-prereqs`)** — checks `nix-ld` / `glibc` dynamic loader, TLS CA certificates, `kitty`, `notify-send`, `stty`, PATH, and registry health, and can install system prerequisites (`kitty`, `ca-certificates`, `libnotify`, `coreutils`) automatically on Debian/Ubuntu (`apt-get`), Arch (`pacman`), Fedora (`dnf`), and Gentoo (`emerge`).
+- 📊 **Status Bar & Notification Flags (`--status` / `--notify`)** — emits single-line JSON for Waybar / Noctalia bar widgets and sends one-shot `notify-send` desktop alerts per upstream release using a 6-hour registry cache (`~/.cache/freebuff-cli/npm-latest.json`).
+- 📦 **Cross-Distro Packaging (`go-build/flake.nix`, `go-build/nixos/`, `go-build/packaging/`)** — includes a Nix Flake (`vendorHash = null`) and Home Manager module (`go-build/nixos/freebuff-cli.nix`), plus native packaging recipes for Debian/Ubuntu (`build-deb.sh`), Arch (`PKGBUILD`), Fedora (`freebuff-cli.spec`), and Gentoo (`freebuff-cli-1.0.0.ebuild`).
+
+---
+
 ## [v0.7] — 2026-11-05
 
 ### Added
@@ -155,6 +170,7 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 ---
 
 [Unreleased]: https://github.com/dwilliam62/FreeBuff-cli-installer
+[v1.0.0]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.7]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.6]: https://github.com/dwilliam62/FreeBuff-cli-installer
 [v0.5]: https://github.com/dwilliam62/FreeBuff-cli-installer

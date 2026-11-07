@@ -5,9 +5,10 @@
 **One command to get [Freebuff](https://freebuff.com) — the AI coding agent — running on your Linux box.**
 
 <p>
+  <img alt="go version" src="https://img.shields.io/badge/standalone_go-v1.0.0-00ADD8?style=for-the-badge&logo=go&logoColor=white">
   <img alt="script version" src="https://img.shields.io/badge/script-v0.7-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
-  <img alt="platforms" src="https://img.shields.io/badge/platform-Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora%20%7C%20Gentoo-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
-  <img alt="shell" src="https://img.shields.io/badge/shell-bash-4eaa25?style=for-the-badge&logo=gnubash&logoColor=white">
+  <img alt="platforms" src="https://img.shields.io/badge/platform-NixOS%20%7C%20Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora%20%7C%20Gentoo-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
+  <img alt="shell" src="https://img.shields.io/badge/shell-bash%20%2F%20go-4eaa25?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="license" src="https://img.shields.io/badge/license-GPL--3.0-blueviolet?style=for-the-badge&logo=opensourceinitiative&logoColor=white">
 </p>
 
@@ -41,6 +42,30 @@ toolchain can be inspected without installing anything with `--check`.
 > 💡 **Why a script?** Freebuff ships on npm as a thin launcher, so `npx freebuff` is all you
 > really need — the tricky part is having a *current* Node.js on a distro that may ship an
 > ancient one. This script handles that part, with explicit fallbacks and no silent surprises.
+
+---
+
+## 🐹 Standalone Go Edition (`go-build/`) — Zero Node.js/npm Required
+
+In addition to `freebuff-cli.sh`, [`go-build/`](go-build/README.md) provides a **standalone, zero-dependency Go binary (`freebuff-cli`)** supporting **NixOS, Debian, Ubuntu, Gentoo, Arch Linux, and Fedora** without needing Node.js, npm, npx, NodeSource, or `nvm`:
+
+- **Direct NPM Registry Sync**: Queries `https://registry.npmjs.org/freebuff/latest` directly over HTTPS, verifies the SHA-256 digest against the npm `binaryChecksums` manifest, supports HTTP `Range` download resumption, and extracts `freebuff` + `tree-sitter.wasm` into `~/.config/manicode/`.
+- **Kitty Terminal Desktop Entry**: Installs `~/.local/share/applications/freebuff-cli.desktop` to launch `freebuff-cli` in **Kitty** (`kitty` is required for the desktop icon).
+- **Legacy Nix & Bash Wrapper Cleanup**: Detects previous `npx`-based Nix `freebuff-cli` wrappers (`--remove-legacy-nix`) and installed NPM-based `freebuff-cli.sh` copies (`--remove-sh`) and prompts to remove them cleanly.
+- **Prerequisite Check & Auto-Installer**: Checks `nix-ld`/`glibc`, CA certificates, `kitty`, and `notify-send` (`-d`/`--doctor`) and installs missing prerequisites (`--install-prereqs`).
+- **Cross-Distro Packaging**: Includes [`go-build/flake.nix`](go-build/flake.nix), [`go-build/nixos/freebuff-cli.nix`](go-build/nixos/freebuff-cli.nix), and native package recipes under [`go-build/packaging/`](go-build/packaging/) (`.deb`, `PKGBUILD`, `.spec`, `.ebuild`).
+
+```bash
+cd go-build
+CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o freebuff-cli ./cmd/freebuff-cli
+./freebuff-cli --check             # check installed vs. latest version and readiness
+./freebuff-cli --doctor            # diagnose prerequisites, nix-ld, kitty, and legacy Nix wrappers
+./freebuff-cli --install-prereqs   # install kitty, ca-certificates, libnotify (apt/pacman/dnf/emerge)
+./freebuff-cli --upgrade           # download/update ~/.config/manicode/freebuff immediately
+./freebuff-cli --install           # install binary + Kitty desktop icon + prompt to remove old Nix wrapper
+```
+
+See [`go-build/README.md`](go-build/README.md) for full build, dependency (`go >= 1.22`, `kitty`), and packaging instructions.
 
 ---
 

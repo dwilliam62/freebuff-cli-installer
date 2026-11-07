@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Freebuff CLI
+GenericName=AI Coding Agent
+Comment=Freebuff AI Coding Agent (CLI in Kitty)
+Icon=utilities-terminal
+TryExec=kitty
+Exec=kitty --title "Freebuff CLI" --class freebuff-cli -e /usr/bin/freebuff-cli
+Terminal=false
+Categories=Development;Utility;ConsoleOnly;
+Keywords=ai;coding;agent;freebuff;cli;terminal;
+StartupWMClass=freebuff-cli
