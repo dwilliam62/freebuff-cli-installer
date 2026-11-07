@@ -12,6 +12,8 @@ Format loosely follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 - 🚀 **Universal Root Installer (`install.sh`)** — a friendly bash script with colored, iconic output supporting NixOS, Debian, Ubuntu, Fedora, Arch Linux, and Gentoo. Installs the stationary Go binary, creates the Kitty desktop entry, and includes `-c/--check`, `-u/--upgrade`, `-r/--remove`, `-d/--dry-run`, `-h/--help`, and `-v/--version`.
+- 🛡️ **`install` Command Alias Detection** — checks if `install` is shadowed by a shell alias or function in the user's environment, flags the warning, and directly resolves and executes the coreutils `install` binary.
+- 🔐 **Privilege Escalation (`sudo` with `doas` fallback)** — elevates commands that require root (such as removing legacy `/usr/local/bin/freebuff-cli.sh` or writing to system bin directories) using `sudo` first, with `doas` as an automatic fallback.
 - ⚡ **`Quick-Start-Guide.md`** — comprehensive 1-step installation and distro setup guide.
 - 📦 **Legacy Relocation (`legacy-shell/`, `legacy-nixos/`)** — moved original `freebuff-cli.sh` and `nixos/freebuff-cli.nix` into dedicated `legacy-` directories in case users still prefer the Node.js/nvm/npx route.
 - 🚀 **Standalone Go `freebuff-cli` (`go-build/`)** — a zero-dependency (`CGO_ENABLED=0`, Go `>= 1.22` standard library only) native launcher and updater that replaces the Node.js/npm/npx wrapper chain across **NixOS**, **Debian**, **Ubuntu**, **Gentoo**, **Arch Linux**, and **Fedora**.

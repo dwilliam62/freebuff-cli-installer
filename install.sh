@@ -202,14 +202,72 @@ is_dir_writable() {
   [ -w "$dir" ] || [ "${EUID:-$(id -u)}" -eq 0 ]
 }
 
-run_elevated() {
-  if is_dir_writable "$(dirname "$1")" || [ "${EUID:-$(id -u)}" -eq 0 ]; then
-    "$@"
-  elif have sudo; then
-    sudo "$@"
+# Elevation helper: checks sudo first, doas as fallback
+get_elevation_cmd() {
+  if [ "${EUID:-$(id -u)}" -eq 0 ]; then
+    return 0
+  fi
+  if have sudo; then
+    printf "sudo\n"
+    return 0
+  elif have doas; then
+    printf "doas\n"
+    return 0
   else
-    error "Cannot perform root action without sudo on: $*"
     return 1
+  fi
+}
+
+elevated_rm() {
+  local target="$1"
+  if [ ! -e "$target" ] && [ ! -L "$target" ]; then
+    return 0
+  fi
+
+  local dir
+  dir="$(dirname "$target")"
+
+  if [ "${EUID:-$(id -u)}" -eq 0 ] || { [ -w "$dir" ] && { [ ! -e "$target" ] || [ -w "$target" ]; }; }; then
+    rm -f "$target"
+    return $?
+  fi
+
+  local elev
+  if elev="$(get_elevation_cmd)"; then
+    "$elev" rm -f "$target"
+    return $?
+  else
+    error "Cannot remove $target: write permission denied and neither 'sudo' nor 'doas' was found."
+    return 1
+  fi
+}
+
+# Check if 'install' is an alias or shell function and flag the issue
+check_install_alias() {
+  local is_alias=0
+  local is_func=0
+  if alias install >/dev/null 2>&1; then
+    is_alias=1
+  fi
+  if [ "$(type -t install 2>/dev/null)" = "function" ]; then
+    is_func=1
+  fi
+  if [ "$is_alias" -eq 1 ] || [ "$is_func" -eq 1 ]; then
+    warn "'install' is shadowed by a shell alias or function in your environment!"
+    info "Flagged issue: bypassing alias/function and invoking coreutils 'install' directly."
+  fi
+}
+
+resolve_install_cmd() {
+  check_install_alias
+  if have install; then
+    command -v install
+  elif [ -x /usr/bin/install ]; then
+    printf '/usr/bin/install\n'
+  elif [ -x /bin/install ]; then
+    printf '/bin/install\n'
+  else
+    printf 'install\n'
   fi
 }
 
@@ -304,9 +362,9 @@ prompt_uninstall_legacy_shell() {
         script:*)
           local sfile="${it#script:}"
           if [ "$DRY_RUN" -eq 1 ]; then
-            info "[dry-run] rm -f $sfile"
+            info "[dry-run] rm -f $sfile (elevated with sudo/doas if needed)"
           else
-            if run_elevated rm -f "$sfile"; then
+            if elevated_rm "$sfile"; then
               success "Removed old script: $sfile"
             else
               warn "Could not remove $sfile (check permissions)"
@@ -321,9 +379,9 @@ prompt_uninstall_legacy_shell() {
             info "Update your configuration to import go-build/nixos/freebuff-cli.nix to supersede it."
           else
             if [ "$DRY_RUN" -eq 1 ]; then
-              info "[dry-run] rm -f $wfile"
+              info "[dry-run] rm -f $wfile (elevated with sudo/doas if needed)"
             else
-              if run_elevated rm -f "$wfile"; then
+              if elevated_rm "$wfile"; then
                 success "Removed old wrapper: $wfile"
               fi
             fi
@@ -516,15 +574,42 @@ do_install() {
     exit 1
   fi
 
-  mkdir -p "$TARGET_DIR" 2>/dev/null || run_elevated mkdir -p "$TARGET_DIR"
+  local inst_cmd
+  inst_cmd="$(resolve_install_cmd)"
+
+  if [ ! -d "$TARGET_DIR" ]; then
+    if is_dir_writable "$(dirname "$TARGET_DIR")"; then
+      mkdir -p "$TARGET_DIR"
+    else
+      local elev
+      if elev="$(get_elevation_cmd)"; then
+        "$elev" mkdir -p "$TARGET_DIR"
+      else
+        error "Need root to create $TARGET_DIR, and neither sudo nor doas is available."
+        exit 1
+      fi
+    fi
+  fi
 
   if [ "$DRY_RUN" -eq 1 ]; then
-    info "[dry-run] install -m 0755 $src_bin $TARGET_BIN"
+    if is_dir_writable "$TARGET_DIR"; then
+      info "[dry-run] $inst_cmd -m 0755 $src_bin $TARGET_BIN"
+    else
+      local elev="sudo"
+      have doas && ! have sudo && elev="doas"
+      info "[dry-run] $elev $inst_cmd -m 0755 $src_bin $TARGET_BIN"
+    fi
   else
     if is_dir_writable "$TARGET_DIR"; then
-      install -m 0755 "$src_bin" "$TARGET_BIN"
+      "$inst_cmd" -m 0755 "$src_bin" "$TARGET_BIN"
     else
-      run_elevated install -m 0755 "$src_bin" "$TARGET_BIN"
+      local elev
+      if elev="$(get_elevation_cmd)"; then
+        "$elev" "$inst_cmd" -m 0755 "$src_bin" "$TARGET_BIN"
+      else
+        error "Need root to write $TARGET_DIR, and neither sudo nor doas is available."
+        exit 1
+      fi
     fi
     success "Installed binary to $TARGET_BIN"
   fi
@@ -570,16 +655,15 @@ do_upgrade() {
 do_remove() {
   header "Uninstalling freebuff-cli..."
 
-  if [ -f "$TARGET_BIN" ]; then
+  if [ -e "$TARGET_BIN" ] || [ -L "$TARGET_BIN" ]; then
     if [ "$DRY_RUN" -eq 1 ]; then
-      info "[dry-run] rm -f $TARGET_BIN"
+      info "[dry-run] rm -f $TARGET_BIN (elevated with sudo/doas if needed)"
     else
-      if is_dir_writable "$(dirname "$TARGET_BIN")"; then
-        rm -f "$TARGET_BIN"
+      if elevated_rm "$TARGET_BIN"; then
+        success "Removed binary: $TARGET_BIN"
       else
-        run_elevated rm -f "$TARGET_BIN"
+        warn "Could not remove $TARGET_BIN"
       fi
-      success "Removed binary: $TARGET_BIN"
     fi
   else
     info "No binary found at $TARGET_BIN"

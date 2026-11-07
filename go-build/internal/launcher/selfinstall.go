@@ -168,18 +168,19 @@ func (c *Config) InstallSelf(autoYes bool) error {
 			fmt.Printf("Installed binary to %s.\n", targetPath)
 		}
 	} else {
-		if !hasCommand("sudo") {
-			return fmt.Errorf("need root to write %s, and sudo is not available.\nSet FREEBUFF_INSTALL_PATH=$HOME/.local/bin/freebuff-cli", targetDir)
+		elevCmd, ok := getElevationCmd()
+		if !ok {
+			return fmt.Errorf("need root to write %s, and neither sudo nor doas is available.\nSet FREEBUFF_INSTALL_PATH=$HOME/.local/bin/freebuff-cli", targetDir)
 		}
 		if c.DryRun {
-			fmt.Printf("[dry-run] sudo install -m 0755 %s %s\n", exePath, targetPath)
+			fmt.Printf("[dry-run] %s install -m 0755 %s %s\n", elevCmd, exePath, targetPath)
 		} else {
-			cmd := exec.Command("sudo", "install", "-m", "0755", exePath, targetPath)
+			cmd := exec.Command(elevCmd, "install", "-m", "0755", exePath, targetPath)
 			cmd.Stdin = os.Stdin
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
 			if err := cmd.Run(); err != nil {
-				return fmt.Errorf("sudo install to %s failed: %w", targetPath, err)
+				return fmt.Errorf("%s install to %s failed: %w", elevCmd, targetPath, err)
 			}
 			fmt.Printf("Installed binary to %s.\n", targetPath)
 		}
@@ -220,18 +221,19 @@ func (c *Config) UninstallSelf() error {
 				fmt.Printf("Removed %s.\n", targetPath)
 			}
 		} else {
-			if !hasCommand("sudo") {
-				return fmt.Errorf("need root to remove %s, and sudo is not available", targetPath)
+			elevCmd, ok := getElevationCmd()
+			if !ok {
+				return fmt.Errorf("need root to remove %s, and neither sudo nor doas is available", targetPath)
 			}
 			if c.DryRun {
-				fmt.Printf("[dry-run] sudo rm -f %s\n", targetPath)
+				fmt.Printf("[dry-run] %s rm -f %s\n", elevCmd, targetPath)
 			} else {
-				cmd := exec.Command("sudo", "rm", "-f", targetPath)
+				cmd := exec.Command(elevCmd, "rm", "-f", targetPath)
 				cmd.Stdin = os.Stdin
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
 				if err := cmd.Run(); err != nil {
-					return fmt.Errorf("could not remove %s: %w", targetPath, err)
+					return fmt.Errorf("%s rm of %s failed: %w", elevCmd, targetPath, err)
 				}
 				fmt.Printf("Removed %s.\n", targetPath)
 			}

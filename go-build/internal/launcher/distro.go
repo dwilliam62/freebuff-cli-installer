@@ -96,6 +96,19 @@ func hasCommand(name string) bool {
 	return err == nil
 }
 
+func getElevationCmd() (string, bool) {
+	if os.Geteuid() == 0 {
+		return "", true
+	}
+	if hasCommand("sudo") {
+		return "sudo", true
+	}
+	if hasCommand("doas") {
+		return "doas", true
+	}
+	return "", false
+}
+
 // CheckNixLDLoader verifies that NixOS has nix-ld enabled when running on NixOS.
 func (c *Config) CheckNixLDLoader() error {
 	d := DetectDistro()
@@ -457,11 +470,11 @@ func (c *Config) PromptAndRemoveLegacySh(autoYes bool) error {
 			} else {
 				fmt.Fprintf(os.Stderr, "Could not remove %s: %v\n", sp, err)
 			}
-		} else if hasCommand("sudo") {
+		} else if elevCmd, ok := getElevationCmd(); ok {
 			if c.DryRun {
-				fmt.Printf("[dry-run] sudo rm -f %s\n", sp)
+				fmt.Printf("[dry-run] %s rm -f %s\n", elevCmd, sp)
 			} else {
-				cmd := exec.Command("sudo", "rm", "-f", sp)
+				cmd := exec.Command(elevCmd, "rm", "-f", sp)
 				cmd.Stdin = os.Stdin
 				cmd.Stdout = os.Stdout
 				cmd.Stderr = os.Stderr
@@ -472,7 +485,7 @@ func (c *Config) PromptAndRemoveLegacySh(autoYes bool) error {
 				}
 			}
 		} else {
-			fmt.Fprintf(os.Stderr, "Need root to remove %s and sudo is not available.\n", sp)
+			fmt.Fprintf(os.Stderr, "Need root to remove %s and neither sudo nor doas is available.\n", sp)
 		}
 	}
 
@@ -537,14 +550,15 @@ func (c *Config) InstallPrerequisites() error {
 	}
 
 	needSudo := os.Geteuid() != 0
-	if needSudo && !hasCommand("sudo") {
-		return fmt.Errorf("root privileges are required to install system packages, and sudo was not found")
+	elevCmd, canElevate := getElevationCmd()
+	if needSudo && !canElevate {
+		return fmt.Errorf("root privileges are required to install system packages, and neither sudo nor doas was found")
 	}
 
 	for _, args := range cmds {
 		fullArgs := args
 		if needSudo {
-			fullArgs = append([]string{"sudo"}, args...)
+			fullArgs = append([]string{elevCmd}, args...)
 		}
 		if c.DryRun {
 			fmt.Printf("[dry-run] %s\n", strings.Join(fullArgs, " "))
