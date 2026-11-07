@@ -1,0 +1,8 @@
+# NFS silly-rename artifacts
+.nfs*
+*.nfs*
+**/.nfs*
+
+# Nix build outputs
+result
+result-*

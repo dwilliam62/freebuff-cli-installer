@@ -6,13 +6,14 @@
 
 <p>
   <img alt="go version" src="https://img.shields.io/badge/standalone_go-v1.0.0-00ADD8?style=for-the-badge&logo=go&logoColor=white">
-  <img alt="script version" src="https://img.shields.io/badge/script-v0.7-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
+  <img alt="script version" src="https://img.shields.io/badge/installer-v1.0.0-2ea043?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="platforms" src="https://img.shields.io/badge/platform-NixOS%20%7C%20Debian%20%7C%20Ubuntu%20%7C%20Arch%20%7C%20Fedora%20%7C%20Gentoo-1f6feb?style=for-the-badge&logo=linux&logoColor=white">
   <img alt="shell" src="https://img.shields.io/badge/shell-bash%20%2F%20go-4eaa25?style=for-the-badge&logo=gnubash&logoColor=white">
   <img alt="license" src="https://img.shields.io/badge/license-GPL--3.0-blueviolet?style=for-the-badge&logo=opensourceinitiative&logoColor=white">
 </p>
 
 <p>
+  <a href="Quick-Start-Guide.md"><img alt="Quick Start Guide" src="https://img.shields.io/badge/Docs-Quick--Start--Guide.md-orange?style=flat-square&logo=gitbook&logoColor=white"></a>
   <a href="https://freebuff.com"><img alt="Website" src="https://img.shields.io/badge/Website-freebuff.com-8a2be2?style=flat-square&logo=googlechrome&logoColor=white"></a>
   <a href="https://discord.com/invite/yXG3w7wxfs"><img alt="Discord" src="https://img.shields.io/badge/Discord-Join%20the%20community-5865f2?style=flat-square&logo=discord&logoColor=white"></a>
   <a href="https://github.com/dwilliam62/FreeBuff-cli-installer"><img alt="GitHub" src="https://img.shields.io/badge/GitHub-FreeBuff--cli--installer-181717?style=flat-square&logo=github&logoColor=white"></a>
@@ -22,289 +23,143 @@
 
 ---
 
-## 🎯 Purpose
+## ⚡ Quick Start
 
-`freebuff-cli.sh` is a single-file, dependency-light installer and launcher for the
-[Freebuff](https://freebuff.com) CLI. It takes a fresh machine to a working agent in one step:
-
-| Step | What happens |
-|:--|:--|
-| 1️⃣ | Checks that Node.js and npm exist and are new enough (default **≥ v18**) |
-| 2️⃣ | Installs Node.js with your distro's package manager if it is missing or too old |
-| 3️⃣ | Falls back to **NodeSource** (Debian/Ubuntu, Fedora/RHEL) when the distro build is stale |
-| 4️⃣ | Falls back to **nvm** (no root needed) when neither of the above is possible — also the route taken on Gentoo, which has no NodeSource repo |
-| 5️⃣ | Installs `freebuff` globally, or runs it on demand via `npx` if npm's prefix is read-only |
-| 6️⃣ | Reports installed vs. latest freebuff version, then launches `npx --yes freebuff` |
-
-Everything that changes the system can be previewed first with `--dry-run`, and the whole
-toolchain can be inspected without installing anything with `--check`.
-
-> 💡 **Why a script?** Freebuff ships on npm as a thin launcher, so `npx freebuff` is all you
-> really need — the tricky part is having a *current* Node.js on a distro that may ship an
-> ancient one. This script handles that part, with explicit fallbacks and no silent surprises.
-
----
-
-## 🐹 Standalone Go Edition (`go-build/`) — Zero Node.js/npm Required
-
-In addition to `freebuff-cli.sh`, [`go-build/`](go-build/README.md) provides a **standalone, zero-dependency Go binary (`freebuff-cli`)** supporting **NixOS, Debian, Ubuntu, Gentoo, Arch Linux, and Fedora** without needing Node.js, npm, npx, NodeSource, or `nvm`:
-
-- **Direct NPM Registry Sync**: Queries `https://registry.npmjs.org/freebuff/latest` directly over HTTPS, verifies the SHA-256 digest against the npm `binaryChecksums` manifest, supports HTTP `Range` download resumption, and extracts `freebuff` + `tree-sitter.wasm` into `~/.config/manicode/`.
-- **Kitty Terminal Desktop Entry**: Installs `~/.local/share/applications/freebuff-cli.desktop` to launch `freebuff-cli` in **Kitty** (`kitty` is required for the desktop icon).
-- **Legacy Nix & Bash Wrapper Cleanup**: Detects previous `npx`-based Nix `freebuff-cli` wrappers (`--remove-legacy-nix`) and installed NPM-based `freebuff-cli.sh` copies (`--remove-sh`) and prompts to remove them cleanly.
-- **Prerequisite Check & Auto-Installer**: Checks `nix-ld`/`glibc`, CA certificates, `kitty`, and `notify-send` (`-d`/`--doctor`) and installs missing prerequisites (`--install-prereqs`).
-- **Cross-Distro Packaging**: Includes [`go-build/flake.nix`](go-build/flake.nix), [`go-build/nixos/freebuff-cli.nix`](go-build/nixos/freebuff-cli.nix), and native package recipes under [`go-build/packaging/`](go-build/packaging/) (`.deb`, `PKGBUILD`, `.spec`, `.ebuild`).
-
-```bash
-cd go-build
-CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o freebuff-cli ./cmd/freebuff-cli
-./freebuff-cli --check             # check installed vs. latest version and readiness
-./freebuff-cli --doctor            # diagnose prerequisites, nix-ld, kitty, and legacy Nix wrappers
-./freebuff-cli --install-prereqs   # install kitty, ca-certificates, libnotify (apt/pacman/dnf/emerge)
-./freebuff-cli --upgrade           # download/update ~/.config/manicode/freebuff immediately
-./freebuff-cli --install           # install binary + Kitty desktop icon + prompt to remove old Nix wrapper
-```
-
-See [`go-build/README.md`](go-build/README.md) for full build, dependency (`go >= 1.22`, `kitty`), and packaging instructions.
-
----
-
-## 📋 Supported systems
-
-<div align="left">
-
-| Family | Distributions | Installer used |
-|:--|:--|:--|
-| 🟠 Debian family | Debian, Ubuntu, Mint, Pop!_OS | `apt-get` → NodeSource `deb` |
-| 🔵 Arch family | Arch, Manjaro, EndeavourOS | `pacman` |
-| 🎩 Fedora family | Fedora, RHEL, CentOS | `dnf` → NodeSource `rpm` |
-| 🧩 Gentoo family | Gentoo | `emerge` (`dev-lang/nodejs`, npm bundled) |
-| 🟣 **NixOS** | NixOS | ❌ refused by the script — use [`nixos/`](#-nixos-integration) |
-| ⚪ Anything else | Alpine, openSUSE, … | ❌ refused — `Unsupported distro` |
-
-</div>
-
-On an unsupported system the script exits **before touching anything**:
-
-```console
-$ ./freebuff-cli.sh
-Error: Unsupported distro: NixOS 26.11 (Zokor)
-Error: This script supports Debian/Ubuntu (apt), Arch (pacman), Fedora/RHEL (dnf)
-Error: and Gentoo (emerge) based systems only.
-Error: Use --force to attempt it anyway (not recommended).
-```
-
-**Gentoo notes** 🧩 — the script runs `emerge --ask=n --noreplace dev-lang/nodejs`, which
-pulls npm and npx in as part of the package (the default `npm` USE flag). It never edits your
-world file. Gentoo is a source-based, rolling distribution with no **NodeSource** repository,
-so if `::gentoo` carries a `dev-lang/nodejs` older than the minimum — or the package is masked
-or keyword-gated — the script goes straight to the **nvm** fallback (`~/.nvm`, no root) rather
-than failing. npm's global prefix (`/usr/lib/node_modules`) is root-owned, so expect the
-global install to warn and the launch to continue through `npx --yes`; that is normal on Gentoo.
-
-`--force` overrides the check for testing, with a warning. It is not meant for daily use.
-
----
-
-## ⚡ Quick start
+Clone the repository and run the unified installer (`install.sh`):
 
 ```bash
 git clone https://github.com/dwilliam62/FreeBuff-cli-installer.git
 cd FreeBuff-cli-installer
-chmod +x freebuff-cli.sh
-./freebuff-cli.sh
+chmod +x install.sh
+./install.sh
 ```
 
-Preview first if you prefer:
+The installer detects your Linux distribution (**NixOS**, **Debian**, **Ubuntu**, **Fedora**, **Arch Linux**, **Gentoo**, etc.), checks for legacy shell/NPM versions and prompts to clean them up, deploys the standalone Go binary (`freebuff-cli`) to your PATH, and sets up the **Kitty** desktop launcher.
 
-```bash
-./freebuff-cli.sh --check     # what is installed, what is missing (changes nothing)
-./freebuff-cli.sh --doctor    # every prerequisite, with the fix beside each problem
-./freebuff-cli.sh --dry-run   # the exact commands a real run would execute
-```
+For a fast step-by-step walkthrough and distro tips, see the **[Quick Start Guide](Quick-Start-Guide.md)**.
 
 ---
 
-## 📥 Installation
+## 🎯 Purpose & Editions
 
-### Option A — run it from the clone
+Freebuff upstream publishes its coding agent as a native ELF binary verified against an npm package manifest. This repository provides two editions:
 
-```bash
-~/FreeBuff-cli-installer/freebuff-cli.sh
-```
-
-### Option B — put it on your `PATH` (recommended)
-
-```bash
-./freebuff-cli.sh --install          # copies to /usr/local/bin/freebuff-cli.sh
-freebuff-cli.sh                      # now available as a command
-```
-
-A plain `./freebuff-cli.sh` also copies itself to `$INSTALL_PATH` on a best-effort basis, so
-you do not strictly need `--install`; it never fails the launch, and says
-`Not installed to … — run '… --install'` when the copy is not possible (no sudo, missing or
-unwritable target). A piped `curl … | bash` run is skipped silently, because `$0` is not the
-script file to copy.
-
-| Behaviour | Detail |
-|:--|:--|
-| 🔁 Self-install | a normal run copies the script to `$INSTALL_PATH` when it can; `--install` is the explicit, checked form |
-| 🔐 Elevation | uses `sudo` only when the target directory is not writable |
-| 🚫 No surprises | **refuses to create a missing directory** — it never fabricates `/usr/local/bin` |
-| 🎯 Custom target | `FREEBUFF_INSTALL_PATH=$HOME/.local/bin/freebuff-cli.sh ./freebuff-cli.sh --install` |
-| 🧹 Removal | `./freebuff-cli.sh --remove` (or `-r`); `--uninstall` still works as an alias |
-
-### Option C — NixOS
-
-Use the module in [`nixos/`](#-nixos-integration). Do **not** run this script on NixOS.
-
-### Option D — no install at all
-
-```bash
-npx --yes freebuff
-```
-
-The script is a convenience wrapper around this; if Node.js is already current, `npx` alone is enough.
+1. **🚀 Standalone Go Edition (`install.sh` + `go-build/`) — Recommended**:
+   - A single, static native binary (`freebuff-cli`, `CGO_ENABLED=0`, Go standard library only).
+   - **Zero Node.js / npm / npx / nvm dependencies**: Connects directly to `registry.npmjs.org` over HTTPS.
+   - Verifies SHA-256 checksums, supports resumable downloads, and manages `~/.config/manicode/freebuff`.
+   - Automatically handles AVX2 CPU detection with `-baseline` fallback on `SIGILL`.
+   - Includes **Kitty** desktop integration (`freebuff-cli.desktop`).
+2. **📜 Legacy Shell & NPM Edition (`legacy-shell/`, `legacy-nixos/`)**:
+   - Preserved for users who require the original Node.js/nvm bootstrapping bash script (`legacy-shell/freebuff-cli.sh`) or the legacy Home Manager wrapper (`legacy-nixos/nixos/freebuff-cli.nix`).
 
 ---
 
-## 🎛️ Usage
+## 🎛️ Installer Usage (`install.sh`)
 
 ```console
-Usage: freebuff-cli.sh v0.7 [OPTIONS] [--] [ARGS...]
+Usage: ./install.sh [OPTIONS]
 ```
 
 <div align="left">
 
 | Flag | Description |
 |:--|:--|
-| `-u`, `--upgrade` | Update freebuff to the latest published version before launching |
-| `-n`, `--dry-run` | Print every install/launch command, change nothing |
-| `--nvm` | Install Node.js with nvm (no root) instead of system packages |
-| `-c`, `--check` | Read-only report: distro, Node, npm, npx, freebuff versions (exit `1` if not ready) |
-| `-d`, `--doctor` | Deeper read-only diagnosis of the whole toolchain, printing the fix for each problem (exit `1` on a failure) |
-| `--install` | Copy the script to `$INSTALL_PATH` and exit |
-| `-r`, `--remove` | Remove the installed copy and exit |
-| `--force` | Run on an unsupported distro (testing escape hatch) |
-| `--changes` | Print what the script does plus its change history |
-| `-v`, `--version` | Print the script version |
-| `-h`, `--help` | Show help |
+| *(none)* | Full guided install: detects legacy shell versions, installs binary & Kitty desktop icon |
+| `-c`, `--check` | Status check: verifies installed version, detects binary vs. shell version, checks deps |
+| `-u`, `--upgrade` | Rebuilds/installs the standalone binary and updates the upstream Freebuff agent |
+| `-r`, `--remove` | Uninstalls the stationary binary and removes the Kitty desktop launcher |
+| `-d`, `-n`, `--dry-run` | Prints every command that would run without modifying the system |
+| `-y`, `--yes` | Non-interactive mode (assumes yes to prompts, e.g. removing legacy shell versions) |
+| `-v`, `--version` | Prints installer version |
+| `-h`, `--help` | Displays help message and environment overrides |
 
 </div>
-
-Any argument the script does not recognise is forwarded to `freebuff`, and `--` stops option parsing:
-
-```bash
-./freebuff-cli.sh -- --help          # freebuff's own help
-./freebuff-cli.sh --upgrade -- --flag
-```
-
-`--check` and `--doctor` both change nothing. `--check` is the short answer (versions and a
-ready/not-ready verdict); `--doctor` walks every prerequisite — distro, downloader, Node, npm,
-npx, terminal, install path, registry, binary cache — and prints a `fix:` line under anything
-that is wrong. `doctor` on its own works as an alias, and needs no supported distro to run,
-so it is the command to reach for when the script refuses to start.
-
-### Environment variables
-
-| Variable | Default | Purpose |
-|:--|:--|:--|
-| `FREEBUFF_MIN_NODE_MAJOR` | `18` | Minimum acceptable Node.js major version |
-| `FREEBUFF_NODESOURCE_MAJOR` | `22` | Node.js major installed by the NodeSource fallback |
-| `FREEBUFF_NVM_VERSION` | `v0.40.1` | nvm tag installed by the no-root fallback |
-| `FREEBUFF_INSTALL_PATH` | `/usr/local/bin/freebuff-cli.sh` | Target for `--install` / `--remove` |
 
 ### Examples
 
 ```bash
-./freebuff-cli.sh                        # ensure everything, then launch freebuff
-./freebuff-cli.sh --check                # status report, exit code 0 = ready
-./freebuff-cli.sh --doctor               # full diagnosis with fixes for each problem
-./freebuff-cli.sh --upgrade              # update freebuff, then launch
-./freebuff-cli.sh --nvm                  # force the nvm route (no root)
-./freebuff-cli.sh --dry-run --upgrade    # show what an upgrade would do
-./freebuff-cli.sh --install              # put it on PATH
-./freebuff-cli.sh --remove               # take it off PATH
+./install.sh                # Install binary to PATH and create Kitty desktop launcher
+./install.sh --check        # Inspect environment, detect legacy wrappers, verify prerequisites
+./install.sh --dry-run      # Preview all changes first
+./install.sh --upgrade      # Upgrade freebuff-cli binary and fetch latest upstream agent
+./install.sh --remove       # Uninstall binary and desktop icon
 ```
 
 ---
 
-## 🧩 How it works
+## 📁 Repository Directory Structure
 
 ```text
-Node.js missing or < min ──► distro package manager ──► NodeSource ──► nvm
-                                        (fallback)        (fallback)
-freebuff missing ──► npm install -g freebuff  ──► or npx --yes freebuff
-launch ──► exec npx --yes freebuff "$@"
+FreeBuff-cli-installer/
+├── install.sh                  # 🚀 Universal root installer for all Linux distributions
+├── Quick-Start-Guide.md        # ⚡ Step-by-step setup and distro guide
+├── README.md                   # 📖 Project documentation
+├── CHANGELOG.md                # 📜 Project changelog
+├── go-build/                   # 🐹 Standalone Go binary source & packaging
+│   ├── cmd/freebuff-cli/       # CLI entrypoint (main.go)
+│   ├── internal/launcher/      # Core launcher, HTTP resume, semver, CPU AVX2, and doctor logic
+│   ├── flake.nix               # Nix Flake definition (vendorHash = null)
+│   ├── nixos/                  # Modern NixOS Home Manager module (freebuff-cli.nix)
+│   ├── packaging/              # Native packaging recipes (.deb, PKGBUILD, .spec, .ebuild)
+│   ├── go.mod                  # Zero-dependency Go module (Go >= 1.22)
+│   └── README.md               # Go build and packaging documentation
+├── legacy-shell/               # 📜 Original NPM-based bash installer
+│   └── freebuff-cli.sh         # Legacy Node.js/NodeSource/nvm bootstrapping script
+└── legacy-nixos/               # 📜 Original NixOS npx wrapper
+    └── nixos/
+        └── freebuff-cli.nix    # Legacy Home Manager module invoking npx
 ```
-
-- ✅ **Idempotent** — re-running never reinstalls what is already current.
-- ✅ **Read-only npm prefixes handled** — a failed `npm install -g` (root-owned prefix,
-  immutable distro) downgrades to `npx --yes`, which fetches into the npm cache instead.
-- ✅ **Offline-tolerant** — an unreachable registry prints "unknown" rather than failing.
-- ✅ **Nothing hidden** — every mutating step is one `--dry-run` away from being printed.
 
 ---
 
-## 🐧 NixOS integration
+## 📋 Runtime Prerequisites
 
-NixOS is deliberately **not** supported by the bash script: `/usr/local/bin` is not part of
-the NixOS filesystem layout, global npm installs fight the immutable store, and the freebuff
-binary needs a dynamic loader NixOS does not expose by default. Use the Nix module instead.
+- **Kitty Terminal (`kitty`) — Recommended**: The desktop launcher (`freebuff-cli.desktop`) opens Freebuff inside Kitty for complete keyboard protocol, mouse event reporting, and truecolor support.
+- **Dynamic ELF Loader (`glibc` / `nix-ld`)**: The downloaded agent binary is a 64-bit dynamically linked ELF executable.
+  - **Debian / Ubuntu / Fedora / Arch / Gentoo**: Provided natively by `glibc` / `libc6`.
+  - **NixOS**: Requires `programs.nix-ld.enable = true;` in your system configuration.
+- **TLS CA Certificates (`ca-certificates`)**: System root certificates for TLS connections to `registry.npmjs.org` and `codebuff.com`.
 
-Pointed at [`nixos/freebuff-cli.nix`](nixos/freebuff-cli.nix):
+---
 
-<div align="left">
+## 🐧 Distro Integration
 
-| Aspect | Detail |
-|:--|:--|
-| 🧩 Type | Home Manager module (`home.packages`) |
-| ⚙️ Creates | `freebuff-cli` — a wrapper around `npx --yes freebuff "$@"` |
-| 📦 Provides | Node.js from `pkgs.nodejs`, added to `PATH` regardless of your shell |
-| 🛡️ Requires | `programs.nix-ld.enable = true;` so the downloaded native binary can start |
-| 🏷️ Why `freebuff-cli` | a global/desktop build named `freebuff` can shadow the CLI; the wrapper always resolves the npm package |
+### 1. NixOS
+- **Via Flake & Home Manager**:
+  Import `go-build/nixos/freebuff-cli.nix` in your configuration:
+  ```nix
+  {
+    imports = [ ./go-build/nixos/freebuff-cli.nix ];
+    programs.freebuff-cli.enable = true;
+  }
+  ```
+- **Via `install.sh`**:
+  Running `./install.sh` on NixOS automatically targets `~/.local/bin/freebuff-cli` (no root required) and installs the Kitty desktop entry.
 
-</div>
-
-### Enable it
-
-```nix
-# home.nix / home-manager configuration
-{ pkgs, ... }: {
-  imports = [ ./FreeBuff-cli-installer/nixos/freebuff-cli.nix ]; # or copy into modules/home/cli/
-}
-```
-
-### nix-ld is mandatory
-
-`freebuff` is published as a thin launcher that downloads a platform binary on first run.
-That binary is a generic dynamically linked ELF, so NixOS' `stub-ld` refuses to start it
-with *"Could not start dynamically linked executable"* unless `nix-ld` is enabled:
-
-```nix
-# modules/packages.nix
-programs.nix-ld.enable = true;
-```
-
-The wrapper checks for `/run/current-system/sw/share/nix-ld/lib/ld.so` and fails fast with
-instructions if it is missing.
-
-### Apply
-
+### 2. Debian / Ubuntu
+Build or install the standalone `.deb`:
 ```bash
-home-manager switch --flake ~/NixOS-Hyprland/#<host>
-# or
-sudo nixos-rebuild switch --flake ~/NixOS-Hyprland/#<host>
+./go-build/packaging/debian/build-deb.sh
+sudo apt install ./go-build/freebuff-cli_1.0.0_amd64.deb
 ```
 
-Then run:
-
+### 3. Arch Linux / Manjaro
 ```bash
-freebuff-cli
+cd go-build/packaging/arch
+makepkg -si
 ```
 
-> 📝 The same module also lives in `NixOS-Hyprland/modules/home/cli/freebuff-cli.nix`; this
-> repository keeps the standalone copy so it can be reused in other flakes.
+### 4. Fedora / RHEL
+```bash
+rpmbuild -bb go-build/packaging/fedora/freebuff-cli.spec
+```
+
+### 5. Gentoo
+Use the Portage ebuild in `go-build/packaging/gentoo/freebuff-cli-1.0.0.ebuild`:
+```bash
+sudo emerge -av app-misc/freebuff-cli
+```
 
 ---
 
@@ -312,24 +167,19 @@ freebuff-cli
 
 <div align="left">
 
-| Symptom | Fix |
+| Symptom | Cause & Fix |
 |:--|:--|
-| `Unsupported distro: …` | Use a supported distro, or `--force` to attempt it anyway |
-| `/usr/local/bin does not exist — refusing to create it` | `FREEBUFF_INSTALL_PATH=$HOME/.local/bin/freebuff-cli.sh ./freebuff-cli.sh --install` |
-| `… is not in your PATH` | Add the directory to `PATH` (e.g. `~/.local/bin`) |
-| `npm install -g` warns and falls back to npx | Expected on read-only npm prefixes; the launch still works |
-| `Node.js vX is older than the required v18` | The script tries NodeSource, then nvm; or force it with `--nvm` |
-| `emerge` is blocked by a mask / keyword / USE change (Gentoo) | Unmask it, or skip emerge entirely with `./freebuff-cli.sh --nvm` |
-| `emerge: command not found` | You are not on Gentoo, or `sys-apps/portage` is not in `PATH` |
-| `Could not start dynamically linked executable` (NixOS) | `programs.nix-ld.enable = true;` and rebuild |
-| `Failed to download …` | Ensure `curl` or `wget` is installed |
-| freebuff launches a different build than expected | Use the `freebuff-cli` wrapper (see NixOS section) |
+| `Could not start dynamically linked executable` (NixOS) | Enable `programs.nix-ld.enable = true;` in your NixOS config and rebuild (`nixos-rebuild switch`). |
+| `Legacy shell/NPM version detected` | Run `./install.sh` and answer `Y` when prompted to remove the old shell script and stale npx cache. |
+| `Kitty terminal not found` | Install `kitty` via your distro package manager (`apt install kitty`, `pacman -S kitty`, `dnf install kitty`, or `emerge x11-terms/kitty`). |
+| `... is not in your PATH` | Add `~/.local/bin` or `/usr/local/bin` to PATH in `~/.bashrc` or `~/.zshrc`. |
+| `npm registry unreachable` | Check internet or proxy settings (`HTTP_PROXY`, `HTTPS_PROXY`); cached binary runs offline. |
 
 </div>
 
 ---
 
-## 🤝 Community & links
+## 🤝 Community & Links
 
 <div align="center">
 
@@ -339,6 +189,7 @@ freebuff-cli
 | 💬 **Discord** | <https://discord.com/invite/yXG3w7wxfs> |
 | 🐙 **Repository** | <https://github.com/dwilliam62/FreeBuff-cli-installer> |
 | 📜 **Changelog** | [CHANGELOG.md](CHANGELOG.md) |
+| ⚡ **Quick Start Guide** | [Quick-Start-Guide.md](Quick-Start-Guide.md) |
 
 </div>
 
@@ -350,6 +201,6 @@ GNU General Public License v3.0 — see [LICENSE](LICENSE).
 
 <div align="center">
 
-**Happy coding!** ✨
+**Happy coding with Freebuff!** ✨
 
 </div>
